@@ -1,19 +1,14 @@
-
 ---
-title: my_site
-keywords: my_site
-desc: my_site, generated with teedoc, a static site generator
+title: 首页
+keywords: 首页
+desc: Rapier中文文档首页
 id: home_page
 ---
 
-
-
-
 <div>
-    <h1><span>my_site</span></h1>
-    <h3>好耶~ 网站出现啦！</h3>
+    <h1><span>Rapier中文文档</span></h1>
+    <h3>Fast 2D and 3D physics engine for the Rust programming language.</h3>
 </div>
 <div id="big_btn_wrapper">
-    <a class="btn" href="/doc1/">See Doc1</a>
+    <a class="btn" href="/docs/">立即开始</a>
 </div>
-

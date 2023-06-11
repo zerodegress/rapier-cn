@@ -1,13 +1,13 @@
 {
-    "site_name": "mysite",
-    "site_slogon": "",
+    "site_name": "Rapier中文網",
+    "site_slogon": "基于Rust编程语言的物理引擎",
     "site_root_url": "/",
-    "site_domain": "my_name.github.io",
+    "site_domain": "rapier.zerodegress.ink",
     "site_protocol": "https",
     "config_template_dir": "config",
     "route": {
         "docs": {
-            "/doc1/": "docs/doc1"
+            "/docs": "docs"
         },
         "pages": {
             "/": "pages/index"
