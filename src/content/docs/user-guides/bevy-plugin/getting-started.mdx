@@ -1,0 +1,172 @@
+---
+title: 起步
+description: 了解Rapier在Bevy中使用。
+sidebar:
+    order: 1
+---
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components'
+import { Image } from 'astro:assets'
+import BevyRapierDebugRender3DExample from '../../../../assets/bevy-rapier-debug-render-3d-example.png'
+
+[Bevy](https://bevyengine.org)是一个使用Rust编写的高效，易于使用且编译快速的数据驱动游戏引擎。它基于ECS（Entity-Component-System，实体-组件-系统）的范例并允许定义*插件*，即具有共同目标的成套组件、系统和资源。
+
+[bevy_rapier2d](https://crates.io/crates/bevy_rapier2d)和[bevy_rapier3d](https://crates.io/crates/bevy_rapier3d)库通过使用Bevy的插件系统集成了Rapier到Bevy当中。为了获取**bevy-rapier**最好的效果，多个特性可被选择性启用：
+
+- `debug-render-2d`/`debug-render-3d`: 启用调试渲染插件
+- `simd-stable`: 使用[`wide`库](https://crates.io/crates/wide)启用严格的SIMD优化。有受限的跨平台支持但是可以与稳定版的Rust编译器一同使用。
+- `simd-nightly`: 使用[`packed_simd`库](https://crates.io/crates/packed_simd)启用严格的SIMD优化。有极好的跨平台支持但是需要与nightly版Rust编译器一同使用。
+- `parallel`: 使用[`rayon`库](https://crates.io/crates/rayon)启用物理管线的并行。
+- `serde-serialize`: 使用[`serde`](https://crates.io/crates/serde)启用物理组件的序列化。
+- `enhanced-determinism`: 可在严格执行 IEEE 754-2008 标准的所有 32 位和 64 位平台上实现跨平台确定性（假设代码的其他部分也是确定性的）。这包括大多数现代处理器和 WASM 目标机。
+- `wasm-bindgen`: 启用`rapier`作为WASM库的一个依赖使用，通过`wasm-bindgen`编译。
+
+## Cargo示例
+
+为了使用这些库，第一步是在你的`Cargo.toml`中添加一个依赖:
+
+<Tabs syncKey='example-dimension-type'>
+    <TabItem label='2D示例'>
+        ```toml
+        [dependencies]
+        # TODO: 使用最新的版本号替代“*”。
+        bevy = "*"
+        bevy_rapier2d = "*"
+        ```
+    </TabItem>
+    <TabItem label='3D示例'>
+        ```toml
+        [dependencies]
+        # TODO: 使用最新的版本号替代“*”。
+        bevy = "*"
+        bevy_rapier3d = "*"
+        ```
+    </TabItem>
+</Tabs>
+
+如果你需要启用一些Rapier特性，像SIMD，parallelism，serialization或者determinism，你可以在**bevy_rapier**上直接启用它们。
+
+<Tabs syncKey='example-dimension-type'>
+    <TabItem label='2D示例'>
+        ```toml
+        [dependencies]
+        # TODO: 使用最新的版本号替代“*”。
+        bevy = "*"
+        bevy_rapier2d = { version = "*", features = [ "simd-stable", "debug-render-2d" ] }
+        ```
+    </TabItem>
+    <TabItem label='3D示例'>
+        ```toml
+        [dependencies]
+        # TODO: 使用最新的版本号替代“*”。
+        bevy = "*"
+        bevy_rapier3d = { version = "*", features = [ "simd-stable", "debug-render-3d" ] }
+        ```
+    </TabItem>
+</Tabs>
+
+## 基本模拟示例
+
+下面是`main.rs`文件的一个基本示例。它创建了一个在固定地面上弹跳的球。有关本示例中使用的元素的详细信息，请参阅本指南的后续章节。
+
+<Aside type='note'>`use bevy_rapier2d::prelude::*`或`use bevy_rapier3d::prelude::*`将会把与`bevy_rapier`一起工作所需的最常用的类型全部导入</Aside>
+
+<Tabs syncKey='example-dimension-type'>
+    <TabItem label='2D示例'>
+        ```rust
+        use bevy::prelude::*;
+        use bevy_rapier2d::prelude::*;
+
+        fn main() {
+            App::new()
+                .add_plugins(DefaultPlugins)
+                .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
+                .add_plugins(RapierDebugRenderPlugin::default())
+                .add_systems(Startup, setup_graphics)
+                .add_systems(Startup, setup_physics)
+                .add_systems(Update, print_ball_altitude)
+                .run();
+        }
+
+        fn setup_graphics(mut commands: Commands) {
+            // Add a camera so we can see the debug-render.
+            commands.spawn(Camera2dBundle::default());
+        }
+
+        fn setup_physics(mut commands: Commands) {
+            /* Create the ground. */
+            commands
+                .spawn(Collider::cuboid(500.0, 50.0))
+                .insert(TransformBundle::from(Transform::from_xyz(0.0, -100.0, 0.0)));
+
+            /* Create the bouncing ball. */
+            commands
+                .spawn(RigidBody::Dynamic)
+                .insert(Collider::ball(50.0))
+                .insert(Restitution::coefficient(0.7))
+                .insert(TransformBundle::from(Transform::from_xyz(0.0, 400.0, 0.0)));
+        }
+
+        fn print_ball_altitude(positions: Query<&Transform, With<RigidBody>>) {
+            for transform in positions.iter() {
+                println!("Ball altitude: {}", transform.translation.y);
+            }
+        }
+        ```
+    </TabItem>
+    <TabItem label='3D示例'>
+        ```rust
+        use bevy::prelude::*;
+        use bevy_rapier3d::prelude::*;
+
+        fn main() {
+            App::new()
+                .add_plugins(DefaultPlugins)
+                .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+                .add_plugins(RapierDebugRenderPlugin::default())
+                .add_systems(Startup, setup_graphics)
+                .add_systems(Startup, setup_physics)
+                .add_systems(Update, print_ball_altitude)
+                .run();
+        }
+
+        fn setup_graphics(mut commands: Commands) {
+            // Add a camera so we can see the debug-render.
+            commands.spawn(Camera3dBundle {
+                transform: Transform::from_xyz(-3.0, 3.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+                ..Default::default()
+            });
+        }
+
+        fn setup_physics(mut commands: Commands) {
+            /* Create the ground. */
+            commands
+                .spawn(Collider::cuboid(100.0, 0.1, 100.0))
+                .insert(TransformBundle::from(Transform::from_xyz(0.0, -2.0, 0.0)));
+
+            /* Create the bouncing ball. */
+            commands
+                .spawn(RigidBody::Dynamic)
+                .insert(Collider::ball(0.5))
+                .insert(Restitution::coefficient(0.7))
+                .insert(TransformBundle::from(Transform::from_xyz(0.0, 4.0, 0.0)));
+        }
+
+        fn print_ball_altitude(mut positions: Query<&mut Transform, With<RigidBody>>) {
+            for mut transform in positions.iter_mut() {
+                dbg!(transform.rotation.to_axis_angle());
+                transform.rotation = Quat::from_rotation_z(270_f32.to_radians());
+                //println!("Ball altitude: {}", transform.translation.y);
+            }
+        }
+        ```
+    </TabItem>
+</Tabs>
+
+## 调试渲染器
+
+`bevy_rapier`插件同时有一个调试渲染器（要么是`debug-render-2d`，要么是`debug-render-3d`）来帮助可视化物理引擎所看到的内容。这可以帮助修复一些漏洞，像碰撞箱没有合适地与你的图形表示对齐。调试渲染器会被启用于：
+
+1. 启用`debug-render-2d`或`debug-render-3d`的bevy-rapier的Cargo特性。
+2. 添加插件`RapierDebugRenderPlugin`到Bevy应用。
+
+<Image src={BevyRapierDebugRender3DExample} alt='' />

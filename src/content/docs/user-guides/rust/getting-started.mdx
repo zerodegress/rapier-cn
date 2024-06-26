@@ -1,0 +1,186 @@
+---
+title: 起步
+description: 了解Rapier在Rust中使用。
+sidebar:
+    order: 1
+---
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components'
+
+## 使用Cargo配置Rapier
+
+Rapier依赖于Rust的官方包管理器[Cargo](https://crates.io/)来进行依赖解析和编译。因此，为了让Rapier在你的项目中使用，只需要简单地增加一个新的依赖到你的`Cargo.toml`文件。你可以使用[`rapier2d` 库](https://crates.io/crates/rapier2d)来进行2D物理模拟或[`rapier3d` 库](https://crates.io/crates/rapier3d)来进行3D物理模拟。要使用64位浮点数进行高精度模拟，使用[`rapier2d-f64` 库](https://crates.io/crates/rapier2d-f64) 或 [`rapier3d-f64` 库](https://crates.io/crates/rapier3d-f64)。
+
+在Rapier到达1.0之前，非常推荐总是使用最新发布的版本，尽管你可能时不时地遭遇破坏性更改。
+
+要获取Rapier的最好部分，可选择启用几个特性：
+
+- `simd-stable`: 使用[`wide` 库](https://crates.io/crates/wide)启用严格的SIMD优化。有受限的跨平台支持但是可以与稳定版的Rust编译器一同使用。
+- `simd-nightly`: 使用[`packed_simd` 库](https://crates.io/crates/packed_simd)启用严格的SIMD优化。有极好的跨平台支持但是需要与nightly版Rust编译器一同使用。
+- `parallel`: 使用[`rayon` 库](https://crates.io/crates/rayon)启用物理管线的并行。
+- `serde-serialize`: 使用[`serde`](https://crates.io/crates/serde)启用物理组件的序列化。
+- `enhanced-determinism`: 可在严格执行 IEEE 754-2008 标准的所有 32 位和 64 位平台上实现跨平台确定性（假设代码的其他部分也是确定性的）。这包括大多数现代处理器和 WASM 目标机。
+- `wasm-bindgen`: 启用`rapier`作为WASM库的一个依赖使用，通过`wasm-bindgen`编译。
+
+<Aside type='danger'>只有当模拟的场景有大量移动刚体、碰撞器和/或关节时，启用并行才有用。如果模拟不够复杂，并行化实际上可能会因为并行化开销而导致模拟速度变慢。</Aside>
+
+目前，`enhanced-determinism`特性不能与`parallel`或`simd-{stable-nightly}`特性同时启用。
+
+## Cargo示例
+
+<Tabs syncKey='example-dimension-type'>
+    <TabItem label='2D示例'>
+        ```toml
+        [package]
+        name    = "example-using-rapier"
+        version = "0.0.0"
+        authors = [ "You" ]
+
+        [dependencies]
+        # TODO: 用最新的版本号替代“*”。
+        rapier2d = { version = "*", features = [ "simd-stable" ] }
+
+        [[bin]]
+        name = "example"
+        path = "./example.rs"
+        ```
+    </TabItem>
+    <TabItem label='3D示例'>
+        ```toml
+        [package]
+        name    = "example-using-rapier"
+        version = "0.0.0"
+        authors = [ "You" ]
+
+        [dependencies]
+        # TODO: 用最新的版本号替代“*”。
+        rapier3d = { version = "*", features = [ "simd-stable" ] }
+
+        [[bin]]
+        name = "example"
+        path = "./example.rs"
+        ```
+    </TabItem>
+</Tabs>
+
+## 基本模拟示例
+
+下面是`main.rs`文件的一个基本示例。它创建了一个在固定地面上弹跳的球。有关本示例中使用的元素的详细信息，请参阅本指南的后续章节。
+
+<Tabs syncKey='example-dimension-type'>
+    <TabItem label='2D示例'>
+        ```rust
+        use rapier2d::prelude::*;
+
+        fn main() {
+            let mut rigid_body_set = RigidBodySet::new();
+            let mut collider_set = ColliderSet::new();
+
+            /* Create the ground. */
+            let collider = ColliderBuilder::cuboid(100.0, 0.1).build();
+            collider_set.insert(collider);
+
+            /* Create the bouncing ball. */
+            let rigid_body = RigidBodyBuilder::dynamic()
+                .translation(vector![0.0, 10.0])
+                .build();
+            let collider = ColliderBuilder::ball(0.5).restitution(0.7).build();
+            let ball_body_handle = rigid_body_set.insert(rigid_body);
+            collider_set.insert_with_parent(collider, ball_body_handle, &mut rigid_body_set);
+
+            /* Create other structures necessary for the simulation. */
+            let gravity = vector![0.0, -9.81];
+            let integration_parameters = IntegrationParameters::default();
+            let mut physics_pipeline = PhysicsPipeline::new();
+            let mut island_manager = IslandManager::new();
+            let mut broad_phase = DefaultBroadPhase::new();
+            let mut narrow_phase = NarrowPhase::new();
+            let mut impulse_joint_set = ImpulseJointSet::new();
+            let mut multibody_joint_set = MultibodyJointSet::new();
+            let mut ccd_solver = CCDSolver::new();
+            let mut query_pipeline = QueryPipeline::new();
+            let physics_hooks = ();
+            let event_handler = ();
+
+            /* Run the game loop, stepping the simulation once per frame. */
+            for _ in 0..200 {
+                physics_pipeline.step(
+                    &gravity,
+                    &integration_parameters,
+                    &mut island_manager,
+                    &mut broad_phase,
+                    &mut narrow_phase,
+                    &mut rigid_body_set,
+                    &mut collider_set,
+                    &mut impulse_joint_set,
+                    &mut multibody_joint_set,
+                    &mut ccd_solver,
+                    Some(&mut query_pipeline),
+                    &physics_hooks,
+                    &event_handler,
+                );
+
+                let ball_body = &rigid_body_set[ball_body_handle];
+                println!("Ball altitude: {}", ball_body.translation().y);
+            }
+        }
+        ```
+    </TabItem>
+    <TabItem label='3D示例'>
+        ```rust
+        use rapier3d::prelude::*;
+
+        fn main() {
+            let mut rigid_body_set = RigidBodySet::new();
+            let mut collider_set = ColliderSet::new();
+
+            /* Create the ground. */
+            let collider = ColliderBuilder::cuboid(100.0, 0.1, 100.0).build();
+            collider_set.insert(collider);
+
+            /* Create the bounding ball. */
+            let rigid_body = RigidBodyBuilder::dynamic()
+                .translation(vector![0.0, 10.0, 0.0])
+                .build();
+            let collider = ColliderBuilder::ball(0.5).restitution(0.7).build();
+            let ball_body_handle = rigid_body_set.insert(rigid_body);
+            collider_set.insert_with_parent(collider, ball_body_handle, &mut rigid_body_set);
+
+            /* Create other structures necessary for the simulation. */
+            let gravity = vector![0.0, -9.81, 0.0];
+            let integration_parameters = IntegrationParameters::default();
+            let mut physics_pipeline = PhysicsPipeline::new();
+            let mut island_manager = IslandManager::new();
+            let mut broad_phase = DefaultBroadPhase::new();
+            let mut narrow_phase = NarrowPhase::new();
+            let mut impulse_joint_set = ImpulseJointSet::new();
+            let mut multibody_joint_set = MultibodyJointSet::new();
+            let mut ccd_solver = CCDSolver::new();
+            let mut query_pipeline = QueryPipeline::new();
+            let physics_hooks = ();
+            let event_handler = ();
+
+            /* Run the game loop, stepping the simulation once per frame. */
+            for _ in 0..200 {
+                physics_pipeline.step(
+                    &gravity,
+                    &integration_parameters,
+                    &mut island_manager,
+                    &mut broad_phase,
+                    &mut narrow_phase,
+                    &mut rigid_body_set,
+                    &mut collider_set,
+                    &mut impulse_joint_set,
+                    &mut multibody_joint_set,
+                    &mut ccd_solver,
+                    Some(&mut query_pipeline),
+                    &physics_hooks,
+                    &event_handler,
+                );
+
+                let ball_body = &rigid_body_set[ball_body_handle];
+                println!("Ball altitude: {}", ball_body.translation().y);
+            }
+        }
+        ```
+    </TabItem>
+</Tabs>

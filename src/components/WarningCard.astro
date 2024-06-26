@@ -1,0 +1,9 @@
+---
+import { Image } from 'astro:assets'
+import fireSvg from '../assets/fire.svg'
+---
+
+<div class="custom-warning-card">
+    <div class="custom-warning-card-title-block"><Image src={fireSvg} alt="" /><span class="custom-warning-card-title">警告</span></div>
+    <div class="custom-warning-card-content-block"><slot /></div>
+</div>

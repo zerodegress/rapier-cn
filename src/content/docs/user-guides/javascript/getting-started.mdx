@@ -1,0 +1,195 @@
+---
+title: 起步
+description: 了解Rapier在JavaScript中使用。
+sidebar:
+    order: 1
+---
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components'
+
+## 从NPM安装Rapier
+
+Rapier 以 @dimforge/rapier2d 和 @dimforge/rapier3d NPM 软件包的形式提供。你可以在 package.json 中添加以下内容：
+
+<Tabs syncKey='example-dimension-type'>
+    <TabItem label='2D示例'>
+        ```json
+        "dependencies": {
+            "@dimforge/rapier2d": "*", // 使用最新的版本号替代“*”。
+        }
+        ```
+    </TabItem>
+    <TabItem label='3D示例'>
+        ```json
+        "dependencies": {
+            "@dimforge/rapier3d": "*", // 使用最新的版本号替代“*”。
+        }
+        ```
+    </TabItem>
+</Tabs>
+
+由于 Rapier 实际上是一个 WebAssembly 模块，因此必须异步加载。下面展示了一个动态刚体落地的基本示例。
+
+<Tabs syncKey='example-dimension-type'>
+    <TabItem label='2D示例'>
+        ```js
+        import('@dimforge/rapier2d').then(RAPIER => {
+            // 在这使用RAPIER模块。
+            let gravity = { x: 0.0, y: -9.81 };
+            let world = new RAPIER.World(gravity);
+
+            // 创建地面。
+            let groundColliderDesc = RAPIER.ColliderDesc.cuboid(10.0, 0.1);
+            world.createCollider(groundColliderDesc);
+
+            // 创建一个动态刚体。
+            let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+                    .setTranslation(0.0, 1.0);
+            let rigidBody = world.createRigidBody(rigidBodyDesc);
+
+            // 创建一个立方碰撞箱附加到动态刚体上。
+            let colliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5);
+            let collider = world.createCollider(colliderDesc, rigidBody);
+
+            // 游戏循环。使用你自己的游戏循环替代。
+            let gameLoop = () => {
+                // 引导模拟前进。  
+                world.step();
+
+                // 获取并打印刚体的位置。
+                let position = rigidBody.translation();
+                console.log("Rigid-body position: ", position.x, position.y);
+
+                setTimeout(gameLoop, 16);
+            };
+
+            gameLoop();
+        })
+        ```
+    </TabItem>
+    <TabItem label='3D示例'>
+        ```js
+        import('@dimforge/rapier3d').then(RAPIER => {
+            // 在这使用RAPIER模块。
+            let gravity = { x: 0.0, y: -9.81, z: 0.0 };
+            let world = new RAPIER.World(gravity);
+        
+            // 创建地面。
+            let groundColliderDesc = RAPIER.ColliderDesc.cuboid(10.0, 0.1, 10.0);
+            world.createCollider(groundColliderDesc);
+        
+            // 创建一个动态刚体。
+            let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+                    .setTranslation(0.0, 1.0, 0.0);
+            let rigidBody = world.createRigidBody(rigidBodyDesc);
+        
+            // 创建一个立方碰撞箱附加到动态刚体上。
+            let colliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5);
+            let collider = world.createCollider(colliderDesc, rigidBody);
+        
+            // 游戏循环。使用你自己的游戏循环替代。
+            let gameLoop = () => {
+                // 引导模拟前进。 
+                world.step();
+            
+                // 获取并打印刚体的位置。
+                let position = rigidBody.translation();
+                console.log("Rigid-body position: ", position.x, position.y, position.z);
+            
+                setTimeout(gameLoop, 16);
+            };
+        
+            gameLoop();
+        })
+        ```
+    </TabItem>
+</Tabs>
+
+## 不用打包器使用Rapier
+
+如果你在尝试不用打包器使用Rapier，或者你在使用的打包器不能够正确支持WASM文件，之前的解决方案可能很难工作。另一种选项就是使用我们的兼容UMD包`@dimforge/rapier2d-compat`或者`@dimforge/rapier-3d-compat`。这些包嵌入了WASM文件（通过base64编码）到主`JS`文件。这导致了轻微不同的初始化处理：
+
+<Tabs syncKey='example-dimension-type'>
+    <TabItem label='2D示例'>
+        ```js
+        import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier2d-compat';
+
+        RAPIER.init().then(() => {
+            // 运行模拟。
+        });
+
+        // 或者使用await语法。
+        async function run_simulation() {
+            await RAPIER.init();
+            // 运行模拟。
+        }
+        ```
+    </TabItem>
+    <TabItem label='3D示例'>
+        ```js
+        import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+
+        RAPIER.init().then(() => {
+            // 运行模拟。
+        });
+
+        // 或使用await语法
+        async function run_simulation() {
+            await RAPIER.init();
+            // 运行模拟。
+        }
+        ```
+    </TabItem>
+</Tabs>
+
+完整的示例可在[codepan上](https://codepen.io/sebcrozet/pen/poRQoKK)找到
+
+## 渲染调试形状
+
+Rapier并没有自带任何内置渲染能力，所以你必须自己做渲染。raner，调试形状数据可通过调用`debugRender()`从物理世界实例直接访问。
+```js
+const { vertices, colors } = world.debugRender()
+```
+
+这些都是平铺的数组，充满了物理世界中每个物体和对撞机的形状和颜色数据。
+
+`vertices`数组包含绘制线条的点数据，而`colors`数组则包含与每个线段相关的 RGBA 值。
+
+<Aside type='note'>
+当前版本的 Rapier 无法配置每个刚体的颜色。给出的颜色将基于给定刚体或对撞机的类型及其当前运动状态。
+</Aside>
+
+下面是一个使用Pixi.js以及Pixi的Viewport渲染这个数据的示例。
+```js
+import PIXI from 'pixi.js';
+import { Viewport } from 'pixi-viewport';
+
+// ...
+
+let GRAPHICS = [];
+function renderDebug (pixiViewport, physicsWorld) {
+  const { vertices, colors } = physicsWorld.debugRender();
+
+  GRAPHICS.forEach(g => g.destroy());
+  GRAPHICS = [];
+
+  for (let i = 0; i < vtx.length / 4; i += 1) {
+    const g = new PIXI.Graphics();
+    const c = new PIXI.Color({
+      r: colors[i * 4] * 255,
+      g: colors[i * 4 + 1] * 255,
+      b: colors[i * 4 + 2] * 255,
+      a: colors[i * 4 + 3] * 255
+    });
+
+    g.lineStyle(0.5, c, 1);
+    g.moveTo(vertices[i * 4],     vertices[i * 4 + 1]);
+    g.lineTo(vertices[i * 4 + 2], vertices[i * 4 + 3]);
+    g.closePath();
+
+    GRAPHICS.push(g);
+    pixiViewport.addChild(g);
+  }
+}
+```
+
+在[Rapier.js测试平台代码](https://github.com/dimforge/rapier.js/blob/master/testbed2d/src/Graphics.ts)代码中可以看到一个实际应用的例子。

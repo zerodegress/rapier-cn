@@ -1,0 +1,28 @@
+code {
+    border-radius: 5px;
+    margin: 0.2em;
+    padding: 0.2em;
+}
+
+.custom-warning-card {
+    color: black;
+    background-color: rgb(186, 44, 44);
+    margin: 1em;
+    padding: 1em;
+    border-radius: 5px;
+}
+
+.custom-warning-card .custom-warning-card-title-block {
+    display: flex;
+    vertical-align: middle;
+    font-size: large;
+    font-weight: bold;
+}
+
+.custom-warning-card .custom-warning-card-title-block img {
+    margin: 5px;
+}
+
+.custom-warning-card .custom-warning-card-content-block {
+    margin: 5px;
+}
